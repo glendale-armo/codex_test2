@@ -18,6 +18,16 @@ body {
   border: 1px solid #ccc;
   margin-bottom: 0.5rem;
   border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.library li img {
+  width: 40px;
+  height: 60px;
+  object-fit: cover;
+  border: 1px solid #ccc;
 }
 
 .reader {
@@ -38,6 +48,12 @@ body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+}
+
+.page {
+  flex: 1;
+  text-align: justify;
+  line-height: 1.6;
 }
 
 .controls {
