@@ -4,10 +4,15 @@
   "description": "Basic React + TypeScript EPUB viewer",
   "scripts": {
     "build": "tsc",
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "typescript": "^5.9.2"
+  }
 }
