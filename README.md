@@ -7,6 +7,7 @@ Simple React + TypeScript web app that lets users upload an EPUB file and displa
 - Displays book covers extracted from the EPUB in the library
 - Renders chapters with basic EPUB structure and avoids splitting words across pages
 - Remembers the last read page in `localStorage`
+- Persists uploaded books and highlight notes in `localStorage`
 
 ## Development
 
