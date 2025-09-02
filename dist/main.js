@@ -1,5 +1,22 @@
 // @ts-nocheck
 const PAGE_SIZE = 1500;
+function safeGetItem(key, fallback) {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+    }
+    catch (_a) {
+        return fallback;
+    }
+}
+function safeSetItem(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    }
+    catch (_a) {
+        /* ignore write errors */
+    }
+}
 function splitIntoPages(doc, size) {
     var _a;
     const blocks = Array.from(((_a = doc.body) === null || _a === void 0 ? void 0 : _a.children) || []);
@@ -50,14 +67,7 @@ function splitIntoPages(doc, size) {
     return pages;
 }
 function App() {
-    const [books, setBooks] = React.useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('books') || '[]');
-        }
-        catch (_a) {
-            return [];
-        }
-    });
+    const [books, setBooks] = React.useState(() => safeGetItem('books', []));
     const [currentBook, setCurrentBook] = React.useState(null);
     const [currentChapter, setCurrentChapter] = React.useState(0);
     const [currentPage, setCurrentPage] = React.useState(0);
@@ -117,21 +127,16 @@ function App() {
     }, []);
     React.useEffect(() => {
         if (book) {
-            try {
-                setNotes(JSON.parse(localStorage.getItem(`notes-${book.title}`) || '[]'));
-            }
-            catch (_a) {
-                setNotes([]);
-            }
+            setNotes(safeGetItem(`notes-${book.title}`, []));
         }
     }, [book]);
     React.useEffect(() => {
         if (book) {
-            localStorage.setItem(`notes-${book.title}`, JSON.stringify(notes));
+            safeSetItem(`notes-${book.title}`, notes);
         }
     }, [notes, book]);
     React.useEffect(() => {
-        localStorage.setItem('books', JSON.stringify(books));
+        safeSetItem('books', books);
     }, [books]);
     const handleFiles = async (event) => {
         const files = Array.from(event.target.files || []);
@@ -180,14 +185,17 @@ function App() {
     }, [page, notes]);
     React.useEffect(() => {
         if (book) {
-            localStorage.setItem(`progress-${book.title}`, JSON.stringify({ chapter: currentChapter, page: currentPage }));
+            safeSetItem(`progress-${book.title}`, {
+                chapter: currentChapter,
+                page: currentPage,
+            });
         }
     }, [book, currentChapter, currentPage]);
     if (!book) {
         return React.createElement('div', null, React.createElement('h1', null, 'My Library'), React.createElement('input', { type: 'file', multiple: true, accept: '.epub', onChange: handleFiles }), React.createElement('ul', { className: 'library' }, books.map((b, i) => React.createElement('li', {
             key: i,
             onClick: () => {
-                const progress = JSON.parse(localStorage.getItem(`progress-${b.title}`) || '{}');
+                const progress = safeGetItem(`progress-${b.title}`, {});
                 setCurrentBook(i);
                 setCurrentChapter(progress.chapter || 0);
                 setCurrentPage(progress.page || 0);
