@@ -1,0 +1,13 @@
+{
+  "name": "codex_test2",
+  "version": "1.0.0",
+  "description": "Basic React + TypeScript EPUB viewer",
+  "scripts": {
+    "build": "tsc",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
