@@ -6,11 +6,50 @@ declare var JSZip: any;
 
 const PAGE_SIZE = 1500;
 
-function splitIntoPages(text, size) {
+function splitIntoPages(doc, size) {
+  const blocks = Array.from(
+    doc.body?.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6') || []
+  );
   const pages = [];
-  for (let i = 0; i < text.length; i += size) {
-    pages.push(text.slice(i, i + size));
+  let current = '';
+
+  const pushPage = () => {
+    if (current) {
+      pages.push(current);
+      current = '';
+    }
+  };
+
+  for (const block of blocks) {
+    const text = block.textContent || '';
+    const words = text.trim().split(/\s+/);
+    let paragraph = '';
+
+    const flushParagraph = () => {
+      if (!paragraph) return;
+      const htmlPara = `<p>${paragraph.trim()}</p>`;
+      if (current.length + htmlPara.length > size) {
+        pushPage();
+        current = htmlPara;
+      } else {
+        current += htmlPara;
+      }
+      paragraph = '';
+    };
+
+    for (const word of words) {
+      if ((paragraph + ' ' + word).trim().length > size) {
+        flushParagraph();
+        paragraph = word;
+      } else {
+        paragraph += (paragraph ? ' ' : '') + word;
+      }
+    }
+
+    flushParagraph();
   }
+
+  pushPage();
   return pages;
 }
 
@@ -27,16 +66,36 @@ function App() {
     for (const file of files) {
       const arrayBuffer = await file.arrayBuffer();
       const zip = await JSZip.loadAsync(arrayBuffer);
-      const names = Object.keys(zip.files).filter((n) => n.endsWith('.xhtml') || n.endsWith('.html'));
+      const names = Object.keys(zip.files).filter(
+        (n) => n.endsWith('.xhtml') || n.endsWith('.html')
+      );
       names.sort();
       const chapters = [];
       for (const name of names) {
         const fileData = await zip.files[name].async('string');
-        const doc = new DOMParser().parseFromString(fileData, 'application/xhtml+xml');
-        const text = doc.body?.textContent || '';
-        chapters.push({ title: name.split('/').pop(), pages: splitIntoPages(text, PAGE_SIZE) });
+        const doc = new DOMParser().parseFromString(
+          fileData,
+          'application/xhtml+xml'
+        );
+        chapters.push({
+          title: name.split('/').pop(),
+          pages: splitIntoPages(doc, PAGE_SIZE),
+        });
       }
-      loaded.push({ title: file.name.replace(/\.epub$/i, ''), chapters });
+      let cover = '';
+      const coverName = Object.keys(zip.files).find((n) =>
+        /cover\.(jpe?g|png|gif)$/i.test(n)
+      );
+      if (coverName) {
+        const ext = coverName.split('.').pop().toLowerCase();
+        const data = await zip.files[coverName].async('base64');
+        cover = `data:image/${ext};base64,${data}`;
+      }
+      loaded.push({
+        title: file.name.replace(/\.epub$/i, ''),
+        chapters,
+        cover,
+      });
     }
     setBooks((prev) => [...prev, ...loaded]);
     event.target.value = '';
@@ -45,6 +104,15 @@ function App() {
   const book = currentBook !== null ? books[currentBook] : null;
   const chapter = book ? book.chapters[currentChapter] : null;
   const page = chapter ? chapter.pages[currentPage] : '';
+
+  React.useEffect(() => {
+    if (book) {
+      localStorage.setItem(
+        `progress-${book.title}`,
+        JSON.stringify({ chapter: currentChapter, page: currentPage })
+      );
+    }
+  }, [book, currentChapter, currentPage]);
 
   if (!book) {
     return React.createElement(
@@ -61,12 +129,21 @@ function App() {
             {
               key: i,
               onClick: () => {
+                const progress = JSON.parse(
+                  localStorage.getItem(`progress-${b.title}`) || '{}'
+                );
                 setCurrentBook(i);
-                setCurrentChapter(0);
-                setCurrentPage(0);
+                setCurrentChapter(progress.chapter || 0);
+                setCurrentPage(progress.page || 0);
               },
             },
-            b.title
+            b.cover
+              ? React.createElement('img', {
+                  src: b.cover,
+                  alt: `${b.title} cover`,
+                })
+              : null,
+            React.createElement('span', null, b.title)
           )
         )
       )
@@ -112,7 +189,11 @@ function App() {
     React.createElement(
       'div',
       { className: 'content' },
-      React.createElement('div', { style: { fontSize } }, page),
+      React.createElement('div', {
+        className: 'page',
+        style: { fontSize },
+        dangerouslySetInnerHTML: { __html: page },
+      }),
       React.createElement(
         'div',
         { className: 'controls' },
