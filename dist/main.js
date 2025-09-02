@@ -48,6 +48,39 @@ function App() {
     const [currentChapter, setCurrentChapter] = React.useState(0);
     const [currentPage, setCurrentPage] = React.useState(0);
     const [fontSize, setFontSize] = React.useState(16);
+    const [menuVisible, setMenuVisible] = React.useState(false);
+    const [menuPos, setMenuPos] = React.useState({ x: 0, y: 0 });
+    const handleSelection = (event) => {
+        const selection = window.getSelection();
+        if (selection && !selection.isCollapsed) {
+            setMenuPos({ x: event.clientX, y: event.clientY });
+            setMenuVisible(true);
+        }
+        else {
+            setMenuVisible(false);
+        }
+    };
+    const applyHighlight = () => {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount) {
+            const range = selection.getRangeAt(0);
+            const span = document.createElement('span');
+            span.className = 'highlight';
+            try {
+                range.surroundContents(span);
+            }
+            catch (err) {
+                /* ignore */
+            }
+            selection.removeAllRanges();
+            setMenuVisible(false);
+        }
+    };
+    React.useEffect(() => {
+        const hideMenu = () => setMenuVisible(false);
+        document.addEventListener('mousedown', hideMenu);
+        return () => document.removeEventListener('mousedown', hideMenu);
+    }, []);
     const handleFiles = async (event) => {
         const files = Array.from(event.target.files || []);
         const loaded = [];
@@ -122,7 +155,14 @@ function App() {
         className: 'page',
         style: { fontSize },
         dangerouslySetInnerHTML: { __html: page },
-    }), React.createElement('div', { className: 'controls' }, React.createElement('button', { onClick: () => setCurrentPage((p) => Math.max(p - 1, 0)), disabled: currentPage === 0 }, 'Prev'), React.createElement('span', null, `${currentPage + 1}/${chapter.pages.length}`), React.createElement('button', {
+        onMouseUp: handleSelection,
+    }), menuVisible
+        ? React.createElement('div', {
+            className: 'selection-menu',
+            style: { top: menuPos.y, left: menuPos.x },
+            onMouseDown: (e) => e.stopPropagation(),
+        }, React.createElement('button', { onClick: applyHighlight }, 'Highlight'))
+        : null, React.createElement('div', { className: 'controls' }, React.createElement('button', { onClick: () => setCurrentPage((p) => Math.max(p - 1, 0)), disabled: currentPage === 0 }, 'Prev'), React.createElement('span', null, `${currentPage + 1}/${chapter.pages.length}`), React.createElement('button', {
         onClick: () => setCurrentPage((p) => Math.min(p + 1, chapter.pages.length - 1)),
         disabled: currentPage >= chapter.pages.length - 1,
     }, 'Next'), React.createElement('button', { onClick: () => setFontSize((f) => Math.max(f - 2, 10)) }, 'A-'), React.createElement('button', { onClick: () => setFontSize((f) => f + 2) }, 'A+'))));
