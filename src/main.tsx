@@ -88,6 +88,10 @@ function App() {
   const [notes, setNotes] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState('chapters');
 
+  const book = currentBook !== null ? books[currentBook] : null;
+  const chapter = book ? book.chapters[currentChapter] : null;
+  const page = chapter ? chapter.pages[currentPage] : '';
+
   const handleSelection = (event) => {
     const selection = window.getSelection();
     if (selection && !selection.isCollapsed) {
@@ -198,9 +202,6 @@ function App() {
     event.target.value = '';
   };
 
-  const book = currentBook !== null ? books[currentBook] : null;
-  const chapter = book ? book.chapters[currentChapter] : null;
-  const page = chapter ? chapter.pages[currentPage] : '';
   const pageWithHighlights = React.useMemo(() => {
     let html = page;
     for (const n of notes) {
