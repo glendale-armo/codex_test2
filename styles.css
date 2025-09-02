@@ -87,4 +87,24 @@ body {
 
 .highlight {
   background-color: yellow;
+  cursor: pointer;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tabs button {
+  flex: 1;
+}
+
+.notes {
+  list-style: none;
+  padding: 0;
+}
+
+.notes li {
+  margin-bottom: 0.5rem;
 }

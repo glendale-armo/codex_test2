@@ -61,11 +61,15 @@ function App() {
   const [fontSize, setFontSize] = React.useState(16);
   const [menuVisible, setMenuVisible] = React.useState(false);
   const [menuPos, setMenuPos] = React.useState({ x: 0, y: 0 });
+  const [highlightTarget, setHighlightTarget] = React.useState(null);
+  const [notes, setNotes] = React.useState([]);
+  const [activeTab, setActiveTab] = React.useState('chapters');
 
   const handleSelection = (event) => {
     const selection = window.getSelection();
     if (selection && !selection.isCollapsed) {
       setMenuPos({ x: event.clientX, y: event.clientY });
+      setHighlightTarget(null);
       setMenuVisible(true);
     } else {
       setMenuVisible(false);
@@ -78,21 +82,56 @@ function App() {
       const range = selection.getRangeAt(0);
       const span = document.createElement('span');
       span.className = 'highlight';
+      const id = String(Date.now() + Math.random());
+      span.dataset.noteId = id;
       try {
         range.surroundContents(span);
       } catch (err) {
         /* ignore */
       }
+      const text = range.toString();
+      setNotes((prev) => [...prev, { id, text }]);
       selection.removeAllRanges();
       setMenuVisible(false);
     }
   };
 
+  const handleHighlightClick = (event) => {
+    const target = event.target;
+    if (target && target.classList && target.classList.contains('highlight')) {
+      setMenuPos({ x: event.clientX, y: event.clientY });
+      setHighlightTarget(target);
+      setMenuVisible(true);
+      event.stopPropagation();
+    }
+  };
+
+  const removeHighlight = () => {
+    if (highlightTarget) {
+      const id = highlightTarget.dataset.noteId;
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+      const parent = highlightTarget.parentNode;
+      while (highlightTarget.firstChild) {
+        parent.insertBefore(highlightTarget.firstChild, highlightTarget);
+      }
+      parent.removeChild(highlightTarget);
+      setHighlightTarget(null);
+      setMenuVisible(false);
+    }
+  };
+
   React.useEffect(() => {
-    const hideMenu = () => setMenuVisible(false);
+    const hideMenu = () => {
+      setMenuVisible(false);
+      setHighlightTarget(null);
+    };
     document.addEventListener('mousedown', hideMenu);
     return () => document.removeEventListener('mousedown', hideMenu);
   }, []);
+
+  React.useEffect(() => {
+    setNotes([]);
+  }, [currentBook]);
 
   const handleFiles = async (event) => {
     const files = Array.from(event.target.files || []);
@@ -197,28 +236,57 @@ function App() {
             setCurrentBook(null);
             setCurrentChapter(0);
             setCurrentPage(0);
+            setActiveTab('chapters');
           },
         },
         'Back'
       ),
       React.createElement(
-        'ul',
-        null,
-        book.chapters.map((c, i) =>
-          React.createElement(
-            'li',
-            {
-              key: i,
-              onClick: () => {
-                setCurrentChapter(i);
-                setCurrentPage(0);
-              },
-              style: { fontWeight: i === currentChapter ? 'bold' : 'normal', cursor: 'pointer', marginBottom: '0.5rem' },
-            },
-            c.title
-          )
+        'div',
+        { className: 'tabs' },
+        React.createElement(
+          'button',
+          {
+            onClick: () => setActiveTab('chapters'),
+            style: { fontWeight: activeTab === 'chapters' ? 'bold' : 'normal' },
+          },
+          'Chapters'
+        ),
+        React.createElement(
+          'button',
+          {
+            onClick: () => setActiveTab('notes'),
+            style: { fontWeight: activeTab === 'notes' ? 'bold' : 'normal' },
+          },
+          'Notes'
         )
-      )
+      ),
+      activeTab === 'chapters'
+        ? React.createElement(
+            'ul',
+            null,
+            book.chapters.map((c, i) =>
+              React.createElement(
+                'li',
+                {
+                  key: i,
+                  onClick: () => {
+                    setCurrentChapter(i);
+                    setCurrentPage(0);
+                  },
+                  style: { fontWeight: i === currentChapter ? 'bold' : 'normal', cursor: 'pointer', marginBottom: '0.5rem' },
+                },
+                c.title
+              )
+            )
+          )
+        : React.createElement(
+            'ul',
+            { className: 'notes' },
+            notes.map((n) =>
+              React.createElement('li', { key: n.id }, n.text)
+            )
+          )
     ),
     React.createElement(
       'div',
@@ -228,6 +296,7 @@ function App() {
         style: { fontSize },
         dangerouslySetInnerHTML: { __html: page },
         onMouseUp: handleSelection,
+        onClick: handleHighlightClick,
       }),
       menuVisible
         ? React.createElement(
@@ -237,11 +306,17 @@ function App() {
               style: { top: menuPos.y, left: menuPos.x },
               onMouseDown: (e) => e.stopPropagation(),
             },
-            React.createElement(
-              'button',
-              { onClick: applyHighlight },
-              'Highlight'
-            )
+            highlightTarget
+              ? React.createElement(
+                  'button',
+                  { onClick: removeHighlight },
+                  'Unhighlight'
+                )
+              : React.createElement(
+                  'button',
+                  { onClick: applyHighlight },
+                  'Highlight'
+                )
           )
         : null,
       React.createElement(
