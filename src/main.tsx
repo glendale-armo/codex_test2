@@ -59,6 +59,40 @@ function App() {
   const [currentChapter, setCurrentChapter] = React.useState(0);
   const [currentPage, setCurrentPage] = React.useState(0);
   const [fontSize, setFontSize] = React.useState(16);
+  const [menuVisible, setMenuVisible] = React.useState(false);
+  const [menuPos, setMenuPos] = React.useState({ x: 0, y: 0 });
+
+  const handleSelection = (event) => {
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) {
+      setMenuPos({ x: event.clientX, y: event.clientY });
+      setMenuVisible(true);
+    } else {
+      setMenuVisible(false);
+    }
+  };
+
+  const applyHighlight = () => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount) {
+      const range = selection.getRangeAt(0);
+      const span = document.createElement('span');
+      span.className = 'highlight';
+      try {
+        range.surroundContents(span);
+      } catch (err) {
+        /* ignore */
+      }
+      selection.removeAllRanges();
+      setMenuVisible(false);
+    }
+  };
+
+  React.useEffect(() => {
+    const hideMenu = () => setMenuVisible(false);
+    document.addEventListener('mousedown', hideMenu);
+    return () => document.removeEventListener('mousedown', hideMenu);
+  }, []);
 
   const handleFiles = async (event) => {
     const files = Array.from(event.target.files || []);
@@ -193,7 +227,23 @@ function App() {
         className: 'page',
         style: { fontSize },
         dangerouslySetInnerHTML: { __html: page },
+        onMouseUp: handleSelection,
       }),
+      menuVisible
+        ? React.createElement(
+            'div',
+            {
+              className: 'selection-menu',
+              style: { top: menuPos.y, left: menuPos.x },
+              onMouseDown: (e) => e.stopPropagation(),
+            },
+            React.createElement(
+              'button',
+              { onClick: applyHighlight },
+              'Highlight'
+            )
+          )
+        : null,
       React.createElement(
         'div',
         { className: 'controls' },
