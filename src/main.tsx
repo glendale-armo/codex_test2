@@ -6,6 +6,23 @@ declare var JSZip: any;
 
 const PAGE_SIZE = 1500;
 
+function safeGetItem(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* ignore write errors */
+  }
+}
+
 function splitIntoPages(doc, size) {
   const blocks = Array.from(doc.body?.children || []);
   const pages = [];
@@ -60,13 +77,7 @@ function splitIntoPages(doc, size) {
 }
 
 function App() {
-  const [books, setBooks] = React.useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('books') || '[]');
-    } catch {
-      return [];
-    }
-  });
+  const [books, setBooks] = React.useState(() => safeGetItem('books', []));
   const [currentBook, setCurrentBook] = React.useState(null);
   const [currentChapter, setCurrentChapter] = React.useState(0);
   const [currentPage, setCurrentPage] = React.useState(0);
@@ -131,22 +142,18 @@ function App() {
 
   React.useEffect(() => {
     if (book) {
-      try {
-        setNotes(JSON.parse(localStorage.getItem(`notes-${book.title}`) || '[]'));
-      } catch {
-        setNotes([]);
-      }
+      setNotes(safeGetItem(`notes-${book.title}`, []));
     }
   }, [book]);
 
   React.useEffect(() => {
     if (book) {
-      localStorage.setItem(`notes-${book.title}`, JSON.stringify(notes));
+      safeSetItem(`notes-${book.title}`, notes);
     }
   }, [notes, book]);
 
   React.useEffect(() => {
-    localStorage.setItem('books', JSON.stringify(books));
+    safeSetItem('books', books);
   }, [books]);
 
   const handleFiles = async (event) => {
@@ -211,10 +218,10 @@ function App() {
 
   React.useEffect(() => {
     if (book) {
-      localStorage.setItem(
-        `progress-${book.title}`,
-        JSON.stringify({ chapter: currentChapter, page: currentPage })
-      );
+      safeSetItem(`progress-${book.title}`, {
+        chapter: currentChapter,
+        page: currentPage,
+      });
     }
   }, [book, currentChapter, currentPage]);
 
@@ -233,9 +240,7 @@ function App() {
             {
               key: i,
               onClick: () => {
-                const progress = JSON.parse(
-                  localStorage.getItem(`progress-${b.title}`) || '{}'
-                );
+                const progress = safeGetItem(`progress-${b.title}`, {});
                 setCurrentBook(i);
                 setCurrentChapter(progress.chapter || 0);
                 setCurrentPage(progress.page || 0);
