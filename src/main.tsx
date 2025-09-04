@@ -87,7 +87,6 @@ function App() {
   const [highlightTarget, setHighlightTarget] = React.useState(null);
   const [notes, setNotes] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState('chapters');
-  const [messages, setMessages] = React.useState([]);
 
   const book = currentBook !== null ? books[currentBook] : null;
   const chapter = book ? book.chapters[currentChapter] : null;
@@ -114,28 +113,6 @@ function App() {
       }
       selection.removeAllRanges();
       setMenuVisible(false);
-    }
-  };
-
-  const explainSelection = async () => {
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount) {
-      const text = selection.toString().trim();
-      if (text) {
-        setMenuVisible(false);
-        try {
-          const res = await fetch('/api/explain', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text }),
-          });
-          const data = await res.json();
-          setMessages((prev) => [...prev, { text, answer: data.explanation }]);
-        } catch (err) {
-          console.error(err);
-        }
-        selection.removeAllRanges();
-      }
     }
   };
 
@@ -373,18 +350,9 @@ function App() {
                   'Unhighlight'
                 )
               : React.createElement(
-                  React.Fragment,
-                  null,
-                  React.createElement(
-                    'button',
-                    { onClick: applyHighlight },
-                    'Highlight'
-                  ),
-                  React.createElement(
-                    'button',
-                    { onClick: explainSelection },
-                    'Explain in simple terms'
-                  )
+                  'button',
+                  { onClick: applyHighlight },
+                  'Highlight'
                 )
           )
         : null,
@@ -414,18 +382,6 @@ function App() {
           'button',
           { onClick: () => setFontSize((f) => f + 2) },
           'A+'
-        )
-      )
-    ),
-    React.createElement(
-      'div',
-      { className: 'chatbox' },
-      messages.map((m, i) =>
-        React.createElement(
-          'div',
-          { key: i, className: 'chat-message' },
-          React.createElement('div', { className: 'original' }, m.text),
-          React.createElement('div', { className: 'answer' }, m.answer)
         )
       )
     )
