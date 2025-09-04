@@ -4,6 +4,9 @@ declare var React: any;
 declare var ReactDOM: any;
 declare var JSZip: any;
 
+import { explainSimple } from './ai/explain';
+import { SideChat } from './components/SideChat';
+
 const PAGE_SIZE = 1500;
 
 function safeGetItem(key, fallback) {
@@ -87,7 +90,7 @@ function App() {
   const [highlightTarget, setHighlightTarget] = React.useState(null);
   const [notes, setNotes] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState('chapters');
-  const [messages, setMessages] = React.useState([]);
+  const [chatItems, setChatItems] = React.useState([]);
 
   const book = currentBook !== null ? books[currentBook] : null;
   const chapter = book ? book.chapters[currentChapter] : null;
@@ -117,24 +120,34 @@ function App() {
     }
   };
 
-  const explainSelection = async () => {
+  const onExplainSelected = () => {
     const selection = window.getSelection();
     if (selection && selection.rangeCount) {
       const text = selection.toString().trim();
       if (text) {
         setMenuVisible(false);
-        try {
-          const res = await fetch('/api/explain', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text }),
-          });
-          const data = await res.json();
-          setMessages((prev) => [...prev, { text, answer: data.explanation }]);
-        } catch (err) {
-          console.error(err);
-        }
         selection.removeAllRanges();
+        setChatItems((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), kind: 'user', text },
+        ]);
+        explainSimple(text)
+          .then((ans) =>
+            setChatItems((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), kind: 'assistant', text: ans },
+            ])
+          )
+          .catch((e) =>
+            setChatItems((prev) => [
+              ...prev,
+              {
+                id: crypto.randomUUID(),
+                kind: 'assistant',
+                text: `Error: ${e.message}`,
+              },
+            ])
+          );
       }
     }
   };
@@ -382,7 +395,7 @@ function App() {
                   ),
                   React.createElement(
                     'button',
-                    { onClick: explainSelection },
+                    { onClick: onExplainSelected },
                     'Explain in simple terms'
                   )
                 )
@@ -417,18 +430,10 @@ function App() {
         )
       )
     ),
-    React.createElement(
-      'div',
-      { className: 'chatbox' },
-      messages.map((m, i) =>
-        React.createElement(
-          'div',
-          { key: i, className: 'chat-message' },
-          React.createElement('div', { className: 'original' }, m.text),
-          React.createElement('div', { className: 'answer' }, m.answer)
-        )
-      )
-    )
+    React.createElement(SideChat, {
+      items: chatItems,
+      onClear: () => setChatItems([]),
+    })
   );
 }
 
