@@ -1,6 +1,4 @@
 // @ts-nocheck
-import { explainSimple } from './ai/explain';
-import { SideChat } from './components/SideChat';
 const PAGE_SIZE = 1500;
 function safeGetItem(key, fallback) {
     try {
@@ -79,7 +77,7 @@ function App() {
     const [highlightTarget, setHighlightTarget] = React.useState(null);
     const [notes, setNotes] = React.useState([]);
     const [activeTab, setActiveTab] = React.useState('chapters');
-    const [chatItems, setChatItems] = React.useState([]);
+    const [messages, setMessages] = React.useState([]);
     const book = currentBook !== null ? books[currentBook] : null;
     const chapter = book ? book.chapters[currentChapter] : null;
     const page = chapter ? chapter.pages[currentPage] : '';
@@ -106,30 +104,25 @@ function App() {
             setMenuVisible(false);
         }
     };
-    const onExplainSelected = () => {
+    const explainSelection = async () => {
         const selection = window.getSelection();
         if (selection && selection.rangeCount) {
             const text = selection.toString().trim();
             if (text) {
                 setMenuVisible(false);
+                try {
+                    const res = await fetch('/api/explain', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text }),
+                    });
+                    const data = await res.json();
+                    setMessages((prev) => [...prev, { text, answer: data.explanation }]);
+                }
+                catch (err) {
+                    console.error(err);
+                }
                 selection.removeAllRanges();
-                setChatItems((prev) => [
-                    ...prev,
-                    { id: crypto.randomUUID(), kind: 'user', text },
-                ]);
-                explainSimple(text)
-                    .then((ans) => setChatItems((prev) => [
-                    ...prev,
-                    { id: crypto.randomUUID(), kind: 'assistant', text: ans },
-                ]))
-                    .catch((e) => setChatItems((prev) => [
-                    ...prev,
-                    {
-                        id: crypto.randomUUID(),
-                        kind: 'assistant',
-                        text: `Error: ${e.message}`,
-                    },
-                ]));
             }
         }
     };
@@ -272,13 +265,10 @@ function App() {
             onMouseDown: (e) => e.stopPropagation(),
         }, highlightTarget
             ? React.createElement('button', { onClick: removeHighlight }, 'Unhighlight')
-            : React.createElement(React.Fragment, null, React.createElement('button', { onClick: applyHighlight }, 'Highlight'), React.createElement('button', { onClick: onExplainSelected }, 'Explain in simple terms')))
+            : React.createElement(React.Fragment, null, React.createElement('button', { onClick: applyHighlight }, 'Highlight'), React.createElement('button', { onClick: explainSelection }, 'Explain in simple terms')))
         : null, React.createElement('div', { className: 'controls' }, React.createElement('button', { onClick: () => setCurrentPage((p) => Math.max(p - 1, 0)), disabled: currentPage === 0 }, 'Prev'), React.createElement('span', null, `${currentPage + 1}/${chapter.pages.length}`), React.createElement('button', {
         onClick: () => setCurrentPage((p) => Math.min(p + 1, chapter.pages.length - 1)),
         disabled: currentPage >= chapter.pages.length - 1,
-    }, 'Next'), React.createElement('button', { onClick: () => setFontSize((f) => Math.max(f - 2, 10)) }, 'A-'), React.createElement('button', { onClick: () => setFontSize((f) => f + 2) }, 'A+'))), React.createElement(SideChat, {
-        items: chatItems,
-        onClear: () => setChatItems([]),
-    }));
+    }, 'Next'), React.createElement('button', { onClick: () => setFontSize((f) => Math.max(f - 2, 10)) }, 'A-'), React.createElement('button', { onClick: () => setFontSize((f) => f + 2) }, 'A+'))), React.createElement('div', { className: 'chatbox' }, messages.map((m, i) => React.createElement('div', { key: i, className: 'chat-message' }, React.createElement('div', { className: 'original' }, m.text), React.createElement('div', { className: 'answer' }, m.answer)))));
 }
 ReactDOM.render(React.createElement(App), document.getElementById('root'));

@@ -58,30 +58,19 @@ body {
   align-items: center;
 }
 
-.sidechat {
+.chatbox {
   width: 300px;
   border-left: 1px solid #ccc;
   padding: 1rem;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-}
-
-.sidechat-header {
-  text-align: right;
-  margin-bottom: 0.5rem;
-}
-
-.sidechat-messages {
-  flex: 1;
   overflow-y: auto;
+  text-align: left;
 }
 
-.chat-item {
+.chat-message {
   margin-bottom: 1rem;
 }
 
-.chat-item.user {
+.chat-message .original {
   font-weight: bold;
 }
 
